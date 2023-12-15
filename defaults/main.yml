@@ -1,0 +1,5 @@
+---
+# defaults file for mariadb-tarball
+mariadb_version: "10.6.16"
+mariadb_url: "https://mariadb.mirror.liquidtelecom.com/mariadb-{{ mariadb_version }}/bintar-linux-systemd-x86_64/mariadb-{{ mariadb_version }}-linux-systemd-x86_64.tar.gz"
+mariadb_custom_path: "/data/mysql"

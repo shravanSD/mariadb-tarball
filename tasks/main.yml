@@ -1,0 +1,85 @@
+---
+# tasks file for mariadb-tarball
+- name: "Downloading MariaDB binaries {{ mariadb_version }}"
+  ansible.builtin.get_url:
+    url: "{{ mariadb_url }}"
+    dest: "/tmp/mariadb-{{ mariadb_version }}-linux-systemd-x86_64.tar.gz"
+    mode: '0440'
+
+- name: "Extract mariadb-{{ mariadb_version }}-linux-systemd-x86_64.tar.gz into /opt/mariadb-{{ mariadb_version }}-linux-systemd-x86_64"
+  ansible.builtin.unarchive:
+    src: "/tmp/mariadb-{{ mariadb_version }}-linux-systemd-x86_64.tar.gz"
+    dest: /opt/
+    remote_src: true
+
+- name: Ensure group "mysql" exists
+  ansible.builtin.group:
+    name: mysql
+    state: present
+
+- name: Ensure user "mysql" exists
+  ansible.builtin.user:
+    name: mysql
+    group: mysql
+    create_home: false
+    state: present
+
+- name: Create a symbolic link to /opt/mariadb
+  ansible.builtin.file:
+    src: "/opt/mariadb-{{ mariadb_version }}-linux-systemd-x86_64"
+    owner: mysql
+    group: mysql
+    dest: /opt/mariadb
+    state: link
+
+- name: Create required directories if it does not exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: mysql
+    group: mysql
+    mode: '0755'
+  loop:
+    - "/etc/mysql"
+    - "{{ mariadb_custom_path }}"
+    - "{{ mariadb_custom_path }}/tmp"
+    - "{{ mariadb_custom_path }}/log"
+    - "{{ mariadb_custom_path }}/data"
+    - "{{ mariadb_custom_path }}/socket"
+    - "{{ mariadb_custom_path }}/binlog"
+
+- name: Template a file to /etc/mysql/my.cnf
+  ansible.builtin.template:
+    src: my.cnf.j2
+    dest: /etc/mysql/my.cnf
+    owner: mysql
+    group: mysql
+    mode: '0644'
+
+- name: Initialise datadir
+  ansible.builtin.shell:
+    cmd: /opt/mariadb/scripts/mysql_install_db --user=mysql --defaults-file=/etc/mysql/my.cnf
+
+- name: Template mariadb.service to /lib/systemd/system/mariadb.service
+  ansible.builtin.template:
+    src: mariadb.service.j2
+    dest: /lib/systemd/system/mariadb.service
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Start and enable MariaDB service on boot
+  ansible.builtin.systemd:
+    name: mariadb.service
+    state: started
+    enabled: true
+
+- name: Install libncurses
+  ansible.builtin.apt:
+    name: libncurses5
+    state: present
+
+- name: Add /opt/mariadb/bin to PATH
+  ansible.builtin.lineinfile:
+    path: ~/.bashrc
+    line: export PATH="$PATH":/opt/mariadb/bin
