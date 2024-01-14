@@ -1,4 +1,4 @@
-Role Name
+MariaDB Tarball
 =========
 
 This role install MariaDB server 10.6 using Binary Tarball from official MariaDB repositories.
